@@ -1,0 +1,7 @@
+#dependencies
+.bloop
+.metals
+
+#config
+project
+target
