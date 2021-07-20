@@ -15,7 +15,8 @@ class Weather(weather: Map[String, Any], freq: String) {
     val icon = weather("icon").asInstanceOf[String]
 
     def printWeatherIcon(code: String) = {
-        val lines = fromFile(weather_icons_dir + s"${code}.txt")
+        // val lines = fromFile(weather_icons_dir + s"${code}.txt")
+        val lines = fromFile(weather_icons_dir + "02d.txt")("UTF-8")
         println(lines.mkString)
         lines.close
     }
@@ -55,7 +56,7 @@ class Current(current: Map[String, Any], city: String, state: String, timezone_o
         println(s"${city}, ${state} \n")
 
         println("Current Weather: ")
-        weather.printReport(withIcon=false)
+        weather.printReport(withIcon=true)
         println(s"Temperature: ${temp}")
         println(s"Feels Like: ${feels_like}")
         println(s"Visibility: ${visibility}")
@@ -225,6 +226,7 @@ object p0 {
     val apiKey = "92918be308104905debec438abdf41b0"
     val excludeOpts = Set("current", "minutely", "hourly", "daily", "alerts")
     val units = "imperial"
+    val graphicDir = "C:/Users/vincey/Desktop/Revature/P0/src/graphic/"
 
     def getGeo(city: String, state: String, limit: Int = 10): Map[String, String] = {
         val url = s"http://api.openweathermap.org/geo/1.0/direct?q=${city},${state},US&limit=${limit}&appid=${apiKey}"
@@ -239,7 +241,7 @@ object p0 {
         val coordinates = res.find(x => city.equalsIgnoreCase(x.getOrElse("name", "")) && state.equalsIgnoreCase(x.getOrElse("state", "")) && "us".equalsIgnoreCase(x.getOrElse("country", ""))) match {
             case Some(place) => {
                 val res = place.asInstanceOf[Map[String, String]]
-                return Map("lon" -> res("lon"), "lat" -> res("lat"))
+                return Map("lon" -> res("lon"), "lat" -> res("lat"), "city" -> res("name"), "state" -> res("state"))
             }
             case None => Map[String, String]()
         }
@@ -260,27 +262,96 @@ object p0 {
     }
 
     def extractInput(input: String): (String, String) = {
-        val reg = "[A-Za-z -]+,[A-Za-z ]+".r
+        // Match like city,state (ignoring subsequent inputs)
+        val reg = "[A-Za-z -]+,[A-Za-z ]+".r 
         val res = reg.findFirstIn(input) match {
-            case Some(res) => res.asInstanceOf[List[String]]
-            case _ => List[String](",")
+            case Some(res) => res.asInstanceOf[String]
+            case _ => " , "
         }
 
-        val cityState = res(0).split(",")
+        // Trim leading & trailing whitespace, limit intermediate whitespaces to 1
+        val cityState = res.split(",").map(x => x.trim().replaceAll(" +", " "))
 
         return (cityState(0), cityState(1))
     }
 
+    def printBanner() = {
+        val lines = fromFile(graphicDir + "home_banner.txt")
+        println(lines.mkString)
+        println("\n\n\n\n")
+        lines.close
+    }
+
+    def clear() = {
+        print("\u001b[2J")
+    }
+
+    def clearAndPrintBanner() = {
+        clear()
+        printBanner()
+    }
+
     def main(args: Array[String]): Unit = {
-        println("")
-        // val place = readLine(s"${BOLD}Which city's weather report would you like to see? Input as: city, state ${RESET}")
-        // val cityState = extractInput(place)
-        // val lat_lon = getGeo(cityState._1, cityState._2)
-        val lat_lon = Map("lon" -> "-73.7976", "lat" -> "40.7498")
-        val weatherData = new WeatherData(getWeather(lat_lon), "Queens", "NY")
-        weatherData.current.printReport()
-        weatherData.minutely.printReport()
-        weatherData.hourly.printReport()
-        weatherData.daily.printReport()
+        while (true) {
+            clearAndPrintBanner()
+
+            var place = ""
+            var lat_lon = Map[String, String]()
+            var cityState = ("", "")
+            do  {
+                place = readLine(s"${BOLD}Which city's weather would you like to see? Input as: city, state ${RESET}")
+                cityState = extractInput(place)
+                lat_lon = getGeo(cityState._1, cityState._2)
+
+                if (!lat_lon.contains("lat") || !lat_lon.contains("lon")) {
+                    println("\n There does not seem to be any good matches to your search. Try something like: Queens, NY")
+                }
+
+            } while (!lat_lon.contains("lat") || !lat_lon.contains("lon"))
+
+            var weatherData = new WeatherData(getWeather(lat_lon), lat_lon("city"), lat_lon("state"))
+            
+            var selection = -1
+            do {
+                clearAndPrintBanner()
+                weatherData.current.printReport()
+
+                println(s"${BOLD}Check out one of the forecasts: ${RESET}")
+                println("1) Minutely-precipitation for the next 60-minutes")
+                println("2) Hourly-weather for the next 24-hours")
+                println("3) Daily-weather for the next 7-days")
+                println("Or, 4) Try a different city")
+
+                selection = readLine(s"${BOLD}Your selection: ${RESET}") match {
+
+                    case "1" => 
+                        weatherData.minutely.printReport()
+                        1
+                    case "2" => 
+                        weatherData.hourly.printReport()
+                        2
+                    case "3" =>
+                        weatherData.daily.printReport()
+                        3
+                    case "4" => 4
+                    case default => -1
+                }
+                
+                if (selection != 4) {
+                    if (selection == -1) {
+                        println(s"\n${BOLD}Invalid selection. ${RESET}")
+                    }
+                    println(s"\n${BOLD}Press ENTER to go back: ${RESET}")
+
+                    try {
+                        readChar()
+                    }
+                    catch {
+                        case e: StringIndexOutOfBoundsException => //Ignore, even if user just presses "Enter"
+                    }
+                }
+
+            } while (selection != 4)
+        }
     }
 }
