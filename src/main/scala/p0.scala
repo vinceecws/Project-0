@@ -1,4 +1,5 @@
 import scala.util.parsing.json._
+import scala.math.BigDecimal
 import scala.io.Source._
 import Console._
 import java.text.SimpleDateFormat
@@ -138,6 +139,11 @@ class Hourly(hourly: List[Map[String, Any]], city: String, state: String, dt_now
             println(s"Temperature: ${hour.temp}\n\n")
         }
     }
+
+    def plotData() = {
+        println(s"${BOLD}Hourly Temperature for the Next 24 hours:${RESET}")
+        WeatherData.plot_time_data(Range(0, _data.length - 1).map(x => s"${x}").toList, _data.map(x => x.temp))
+    }
 }
 
 // Daily data forecast for the next 7 days
@@ -203,6 +209,133 @@ class Alerts(alerts: List[Map[String, Any]], city: String, state: String, dt_now
 
     def atInd(ind: Int): Alert = {
         return _data(ind)
+    }
+}
+
+object WeatherData {
+    def plot_time_data(times: List[String], values: List[Float], x_res: Int=100, y_res:Int=30, x_offset: Int=10, y_offset: Int=4): Unit = {
+        val max = values.max
+        val min = values.min
+        val mean = values.sum / values.length
+
+        val y_bin_size = ((max - min) / (y_res - 1).toFloat)
+        val y_bins = values.map(x => ((x - min) / y_bin_size).toInt)
+
+        val x_bin_size = (times.length / x_res.toFloat)
+        val x_bins = Range(0, times.length).map(x => (x / x_bin_size).round.toInt).toList
+
+        val mat = Array.ofDim[Boolean](y_res, x_res) // Array of Y * X, where Y are rows, X are columns
+        (x_bins, y_bins).zipped.foreach{ (x, y) => mat(y)(x) = true} // Scatter points
+
+        val x_tick_ind = (0, (x_res / 2), x_res - 1)
+        val y_tick_ind = (0, (y_res / 2), y_res - 1)
+
+        Range(0, y_offset).foreach(x => print("\n"))
+        var y_tick = ""
+
+        //FIRST Y-TICK
+        y_tick = s"${BigDecimal(max).setScale(2, BigDecimal.RoundingMode.HALF_UP).toFloat}"
+        Range(0, x_offset - y_tick.length - 1).foreach(x => print(" "))
+        print(y_tick + " |")
+
+        for (j <- 0 to x_res - 1) {
+            if (mat(y_tick_ind._1)(j)) {
+                print("X")
+            }
+            else {
+                print(" ")
+            }
+        }
+        print("\n")
+
+        for (i <- 1 to y_tick_ind._2 - 1) {
+            Range(0, x_offset).foreach(x => print(" "))
+            print("|")
+            for (j <- 0 to x_res - 1) {
+                if (mat(i)(j)) {
+                    print("X")
+                }
+                else {
+                    print(" ")
+                }
+            }
+            print("\n")
+        }
+
+        //SECOND Y-TICK
+        y_tick = s"${BigDecimal(mean).setScale(2, BigDecimal.RoundingMode.HALF_UP).toFloat}"
+        Range(0, x_offset - y_tick.length - 1).foreach(x => print(" "))
+        print(y_tick + " |")
+
+        for (j <- 0 to x_res - 1) {
+            if (mat(y_tick_ind._2)(j)) {
+                print("X")
+            }
+            else {
+                print(" ")
+            }
+        }
+        print("\n")
+
+        for (i <- (y_tick_ind._2 + 1) to y_res - 2) {
+            Range(0, x_offset).foreach(x => print(" "))
+            print("|")
+            for (j <- 0 to x_res - 1) {
+                if (mat(i)(j)) {
+                    print("X")
+                }
+                else {
+                    print(" ")
+                }
+            }
+            print("\n")
+        }
+
+        //THIRD Y-TICK
+        y_tick = s"${BigDecimal(min).setScale(2, BigDecimal.RoundingMode.HALF_UP).toFloat}"
+        Range(0, x_offset - y_tick.length - 1).foreach(x => print(" "))
+        print(y_tick + " |")
+
+        for (j <- 0 to x_res - 1) {
+            if (mat(y_tick_ind._3)(j)) {
+                print("X")
+            }
+            else {
+                print(" ")
+            }
+        }
+        print("\n")
+
+        Range(0, x_offset).foreach(x => print(" "))
+        Range(0, x_res).foreach(x => print("_"))
+        print("\n")
+
+        var x_tick = ""
+        Range(0, x_offset).foreach(x => print(" "))
+        var i = 0
+        while (i < x_res) {
+            if (i == x_tick_ind._1) {
+                x_tick = s"${times(0)}"
+                i += x_tick.length
+                print(x_tick)
+            }
+            else if (i == x_tick_ind._2) {
+                x_tick = s"${times(times.length / 2)}"
+                i += x_tick.length
+                print(x_tick)
+            }
+            else if (i == x_tick_ind._3) {
+                x_tick = s"${times(times.length - 1)}"
+                i += x_tick.length
+                print(x_tick)
+            }
+            else {
+                print(" ")
+                i += 1
+            }
+        }
+
+        Range(0, y_offset).foreach(x => print("\n"))
     }
 }
 
@@ -328,7 +461,7 @@ object p0 {
                         weatherData.minutely.printReport()
                         1
                     case "2" => 
-                        weatherData.hourly.printReport()
+                        weatherData.hourly.plotData()
                         2
                     case "3" =>
                         weatherData.daily.printReport()
