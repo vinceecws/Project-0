@@ -4,6 +4,7 @@ import scala.io.Source._
 import Console._
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.TimeZone
 
 class Weather(weather: Map[String, Any], freq: String) {
 
@@ -23,9 +24,9 @@ class Weather(weather: Map[String, Any], freq: String) {
     }
 
     def printReport(withIcon: Boolean=true) = {
-        if (withIcon) {
-            printWeatherIcon(icon)
-        }
+        // if (withIcon) {
+        //     printWeatherIcon(icon)
+        // }
 
         println(s"Weather: ${main}")
         println(s"${description}")
@@ -52,7 +53,7 @@ class Current(current: Map[String, Any], city: String, state: String, timezone_o
     val snow = current.getOrElse("snow", null)
 
     def printReport() = {
-        val date = new SimpleDateFormat("EEE, d MMM yyyy, h:mm a").format(new Date ((dt - timezone_offset) * 1000))
+        val date = new SimpleDateFormat("EEE, d MMM yyyy, h:mm a").format(new Date ((dt + timezone_offset) * 1000))
         println(date)
         println(s"${city}, ${state} \n")
 
@@ -90,6 +91,11 @@ class Minutely(minutely: List[Map[String, Any]], city: String, state: String, dt
         for (min <- _data) {
             println(s"${new SimpleDateFormat("h:mm a").format(new Date ((min.dt + timezone_offset) * 1000))} ${min.precipitation}\n")
         }
+    }
+
+    def plotData() = {
+        println(s"${BOLD}Minutely Precipitation for the Next 60 minutes:${RESET}")
+        WeatherData.plot_time_data(_data.map(x => s"${new SimpleDateFormat("h:mm a").format(new Date ((x.dt + timezone_offset) * 1000))}"), _data.map(x => x.precipitation))
     }
 }
 
@@ -142,7 +148,7 @@ class Hourly(hourly: List[Map[String, Any]], city: String, state: String, dt_now
 
     def plotData() = {
         println(s"${BOLD}Hourly Temperature for the Next 24 hours:${RESET}")
-        WeatherData.plot_time_data(Range(0, _data.length - 1).map(x => s"${x}").toList, _data.map(x => x.temp))
+        WeatherData.plot_time_data(_data.slice(0, 24).map(x => s"${new SimpleDateFormat("h a").format(new Date ((x.dt + timezone_offset) * 1000))}"), _data.slice(0, 24).map(x => x.temp))
     }
 }
 
@@ -180,15 +186,15 @@ class Daily(daily: List[Map[String, Any]], city: String, state: String, dt_now: 
         println(date)
         println(s"${city}, ${state} \n")
 
-        println("Weather for the next 7 days: ")
-        for (day <- _data) {
-            val date = new SimpleDateFormat("EEE, d MMM yyyy").format(new Date ((day.dt + timezone_offset) * 1000))
-            println(date)
-            day.weather.printReport(withIcon=false)
-            println("Temperature: ")
-            println(s"Morning: ${day.temp("morn")} -> Day: ${day.temp("day")} -> Evening: ${day.temp("eve")} -> Night: ${day.temp("night")}")
-            println(s"Lowest: ${day.temp("min")}, Highest: ${day.temp("max")}\n\n")
-        }
+        println("Weather for the next 7 days: \n\n")
+
+        WeatherData.print_horizontal(_data.slice(0, 7).map(day => Map[String, String](
+            "Date" -> s"${new SimpleDateFormat("EEE, d MMM").format(new Date ((day.dt + timezone_offset) * 1000))}",
+            "Weather" -> s"${day.weather.main}",
+            "Desc" -> s"${day.weather.description}",
+            "Temp. High" -> s"${day.temp("max")}",
+            "Temp. Low" -> s"${day.temp("min")}"
+        )), List("Date", "Weather", "Desc", "Temp. High", "Temp. Low"))
     }
 }
 
@@ -213,7 +219,35 @@ class Alerts(alerts: List[Map[String, Any]], city: String, state: String, dt_now
 }
 
 object WeatherData {
-    def plot_time_data(times: List[String], values: List[Float], x_res: Int=100, y_res:Int=30, x_offset: Int=10, y_offset: Int=4): Unit = {
+
+    def print_horizontal(data: List[Map[String, String]], rows: List[String], margin:Int=3): Unit = {
+
+        var max_width = 0
+        var str = ""
+        val buffer = Array.ofDim[String](rows.length, data.length) // Keys as Rows, Elements as Columns
+
+        for ((key, i) <- rows.zipWithIndex) {
+            for ((ele, j) <- data.zipWithIndex) {
+                buffer(i)(j) = s"${key}: ${ele(key)}"
+                if (buffer(i)(j).length > max_width)
+                    max_width = buffer(i)(j).length
+            }
+        }
+
+        max_width += 2
+
+        for (i <- 0 to buffer.size - 1) {
+            Range(0, margin).map(x => print(" "))
+            for (j <- 0 to buffer(0).size - 1) {
+                print(buffer(i)(j))
+                Range(buffer(i)(j).length, max_width).map(x => print(" "))
+            }
+            Range(0, margin).map(x => print(" "))
+            print("\n")
+        }
+    }
+
+    def plot_time_data(times: List[String], values: List[Float], x_res: Int=100, y_res: Int=20, x_offset: Int=10, y_offset: Int=4): Unit = {
         val max = values.max
         val min = values.min
         val mean = values.sum / values.length
@@ -225,7 +259,7 @@ object WeatherData {
         val x_bins = Range(0, times.length).map(x => (x / x_bin_size).round.toInt).toList
 
         val mat = Array.ofDim[Boolean](y_res, x_res) // Array of Y * X, where Y are rows, X are columns
-        (x_bins, y_bins).zipped.foreach{ (x, y) => mat(y)(x) = true} // Scatter points
+        (x_bins, y_bins).zipped.foreach{ (x, y) => mat(y_res - 1 - y)(x) = true} // Scatter points
 
         val x_tick_ind = (0, (x_res / 2), x_res - 1)
         val y_tick_ind = (0, (y_res / 2), y_res - 1)
@@ -356,6 +390,7 @@ class WeatherData(weatherRes: Map[String, Any], city: String, state: String) {
 
 object p0 {
 
+    TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
     val apiKey = "92918be308104905debec438abdf41b0"
     val excludeOpts = Set("current", "minutely", "hourly", "daily", "alerts")
     val units = "imperial"
@@ -458,7 +493,7 @@ object p0 {
                 selection = readLine(s"${BOLD}Your selection: ${RESET}") match {
 
                     case "1" => 
-                        weatherData.minutely.printReport()
+                        weatherData.minutely.plotData()
                         1
                     case "2" => 
                         weatherData.hourly.plotData()
