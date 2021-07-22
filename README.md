@@ -1,15 +1,6 @@
 # Project-0 
 ## Weather App
 
- __          __        _   _                                      
- \ \        / /       | | | |                   /\                
-  \ \  /\  / /__  __ _| |_| |__   ___ _ __     /  \   _ __  _ __  
-   \ \/  \/ / _ \/ _` | __| '_ \ / _ \ '__|   / /\ \ | '_ \| '_ \ 
-    \  /\  /  __/ (_| | |_| | | |  __/ |     / ____ \| |_) | |_) |
-     \/  \/ \___|\__,_|\__|_| |_|\___|_|    /_/    \_\ .__/| .__/ 
-                                                     | |   | |    
-                                                     |_|   |_|    
-
 This app was built entirely on Scala 2.13 and compiles with sbt. It uses the OpenWeather API's One-Call API endpoint to get weather data from any U.S. city. To run it, ensure that your local machine has Scala 2.13 and sbt installed. 
 
 After cloning the repository, navigate to the project's root directory (i.e. where build.sbt is located), then `run sbt` on a shell.
