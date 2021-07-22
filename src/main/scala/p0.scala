@@ -391,7 +391,7 @@ class WeatherData(weatherRes: Map[String, Any], city: String, state: String) {
 object p0 {
 
     TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
-    val apiKey = "92918be308104905debec438abdf41b0"
+    val apiKey = "YOUR-API-KEY-HERE"
     val excludeOpts = Set("current", "minutely", "hourly", "daily", "alerts")
     val units = "imperial"
     val graphicDir = "C:/Users/vincey/Desktop/Revature/P0/src/graphic/"
