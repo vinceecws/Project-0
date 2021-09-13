@@ -1,6 +1,7 @@
 #dependencies
 .bloop
 .metals
+.vscode
 
 #config
 project
