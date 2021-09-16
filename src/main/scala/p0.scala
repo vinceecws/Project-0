@@ -8,7 +8,7 @@ import java.util.TimeZone
 
 class Weather(weather: Map[String, Any], freq: String) {
 
-    val weather_icons_dir = "C:/Users/vincey/Desktop/Revature/P0/src/graphic/weather_icons/"
+    val weather_icons_dir = "./src/graphic/weather_icons/"
 
     val frequency = freq
     val id = weather("id").asInstanceOf[Double].toInt
@@ -394,7 +394,7 @@ object p0 {
     val apiKey = "YOUR-API-KEY-HERE"
     val excludeOpts = Set("current", "minutely", "hourly", "daily", "alerts")
     val units = "imperial"
-    val graphicDir = "C:/Users/vincey/Desktop/Revature/P0/src/graphic/"
+    val graphicDir = "./src/graphic/"
 
     def getGeo(city: String, state: String, limit: Int = 10): Map[String, String] = {
         val url = s"http://api.openweathermap.org/geo/1.0/direct?q=${city},${state},US&limit=${limit}&appid=${apiKey}"
